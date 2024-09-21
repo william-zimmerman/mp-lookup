@@ -93,11 +93,8 @@ main = do
 createCsvRow :: (Postcode, Response) -> ByteString
 createCsvRow (postcode, response) =
   case unpackResponse response of
-    (Left causingError) -> CSV.encode [CSV.Only (createPrettyErrorMessage causingError)]
+    (Left causingError) -> CSV.encode [(postcode, causingError)]
     (Right (constituencyName, memberName)) -> CSV.encode [(postcode, constituencyName, memberName)]
-  where
-    createPrettyErrorMessage :: String -> String
-    createPrettyErrorMessage = printf "Unable to retrieve member for postcode %s : %s" postcode
 
 makeHttpCall :: Postcode -> IO (Postcode, Response)
 makeHttpCall postcode = runReq defaultHttpConfig $ do
