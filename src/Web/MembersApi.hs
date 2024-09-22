@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Web.MembersApi (Response, SearchResult, Constituency, CurrentRepresentation, Member, MemberValue, makeHttpCall, unpackResponse) where
+module Web.MembersApi (getReportData) where
 
 import Data.Aeson (FromJSON, parseJSON, withObject, (.:))
 import GHC.Generics (Generic)
@@ -19,7 +19,7 @@ import Network.HTTP.Req
   )
 import Types as T
   ( ConstituencyName (ConstituencyName),
-    ErrorMessage (ErrorMessage),
+    Failure (Failure),
     MemberName (MemberName),
     Postcode (getPostcode),
     ReportData (..),
@@ -79,17 +79,20 @@ instance FromJSON MemberValue where
       <$> v .: "id"
       <*> v .: "nameListAs"
 
-makeHttpCall :: T.Postcode -> IO (T.Postcode, Response)
+getReportData :: T.Postcode -> IO (Either T.Failure T.ReportData)
+getReportData postcode = unpackResponse postcode <$> makeHttpCall postcode
+
+makeHttpCall :: T.Postcode -> IO Response
 makeHttpCall postcode = runReq defaultHttpConfig $ do
   v <- req GET (https "members-api.parliament.uk" /: "api" /: "Location" /: "Constituency" /: "Search") NoReqBody jsonResponse $ "searchText" =: getPostcode postcode
-  return (postcode, responseBody v :: Response)
+  return (responseBody v :: Response)
 
-unpackResponse :: Response -> Either T.ErrorMessage T.ReportData
-unpackResponse response =
+unpackResponse :: T.Postcode -> Response -> Either T.Failure T.ReportData
+unpackResponse postcode response =
   case items response of
-    [singleItem] -> Right (ReportData (retrieveConstituencyName singleItem) (retrieveMemberName singleItem))
-    [] -> Left (ErrorMessage "No results returned for postcode")
-    _ -> Left (ErrorMessage "More than one result returned for postcode")
+    [singleItem] -> Right (ReportData postcode (retrieveConstituencyName singleItem) (retrieveMemberName singleItem))
+    [] -> Left (Failure postcode "No results returned for postcode")
+    _ -> Left (Failure postcode "More than one result returned for postcode")
   where
     retrieveConstituencyName :: SearchResult -> ConstituencyName
     retrieveConstituencyName searchResult = ConstituencyName $ name $ value searchResult

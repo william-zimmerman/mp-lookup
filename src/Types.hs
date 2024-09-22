@@ -1,10 +1,13 @@
-module Types (Postcode (..), ErrorMessage (..), ReportData (..), ConstituencyName (..), MemberName (..)) where
+module Types (Postcode (..), Failure (..), ReportData (..), ConstituencyName (..), MemberName (..)) where
 
 newtype Postcode = Postcode {getPostcode :: String}
 
-newtype ErrorMessage = ErrorMessage {getMessage :: String}
+data Failure = Failure
+  { postcode :: Postcode,
+    errorMessage :: String
+  }
 
-data ReportData = ReportData ConstituencyName MemberName
+data ReportData = ReportData Postcode ConstituencyName MemberName
 
 newtype ConstituencyName = ConstituencyName {getConstituencyName :: String}
 
