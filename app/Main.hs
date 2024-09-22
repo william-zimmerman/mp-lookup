@@ -15,8 +15,8 @@ import Network.HTTP.Req
 -- Create type for (Postcode, ResponseType)?
 
 newtype Postcode = Postcode {getPostcode :: String}
-  
-type ErrorMessage = String
+
+newtype ErrorMessage = ErrorMessage {getMessage :: String}
 
 type ConstituencyName = String
 
@@ -26,8 +26,8 @@ defaultPostcode :: String
 defaultPostcode = "E5 8AF"
 
 readPostcodes :: IO [Postcode]
-readPostcodes = 
-  map Postcode . lines <$> readFile "resources/simplified_postcodes.txt"
+readPostcodes =
+  map Postcode . lines <$> readFile "resources/postcodes.txt"
 
 data Response = Response
   { items :: [SearchResult],
@@ -93,7 +93,7 @@ main = do
 createCsvRow :: (Postcode, Response) -> ByteString
 createCsvRow (Postcode postcode, response) =
   case unpackResponse response of
-    (Left causingError) -> CSV.encode [(postcode, causingError)]
+    (Left (ErrorMessage message)) -> CSV.encode [(postcode, message)]
     (Right (constituencyName, memberName)) -> CSV.encode [(postcode, constituencyName, memberName)]
 
 makeHttpCall :: Postcode -> IO (Postcode, Response)
@@ -105,8 +105,8 @@ unpackResponse :: Response -> Either ErrorMessage (ConstituencyName, MemberName)
 unpackResponse response =
   case items response of
     [singleItem] -> Right (getConstituencyName singleItem, getMemberName singleItem)
-    [] -> Left "No results returned for postcode"
-    _ -> Left "More than one result returned for postcode"
+    [] -> Left (ErrorMessage "No results returned for postcode")
+    _ -> Left (ErrorMessage "More than one result returned for postcode")
   where
     getConstituencyName :: SearchResult -> String
     getConstituencyName searchResult = name $ value searchResult
