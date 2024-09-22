@@ -11,4 +11,7 @@ data ReportData = ReportData Postcode Constituency Member
 
 newtype Constituency = Constituency {getConstituencyName :: String}
 
-newtype Member = Member {getMemberName :: String}
+data Member = Member
+  { getMemberName :: String,
+    getLatestParty :: String
+  }

@@ -97,4 +97,4 @@ unpackResponse postcode response =
     retrieveConstituencyName :: SearchResult -> T.Constituency
     retrieveConstituencyName searchResult = T.Constituency $ name $ value searchResult
     retrieveMemberName :: SearchResult -> T.Member
-    retrieveMemberName searchResult = T.Member $ nameListAs $ memberValue $ member $ currentRepresentation $ value searchResult
+    retrieveMemberName searchResult = T.Member (nameListAs $ memberValue $ member $ currentRepresentation $ value searchResult) "Foo party"
