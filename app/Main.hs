@@ -13,7 +13,7 @@ newtype Postcode = Postcode {getPostcode :: String}
 
 newtype ErrorMessage = ErrorMessage {getMessage :: String}
 
-type ConstituencyName = String
+newtype ConstituencyName = ConstituencyName {getConstituencyName :: String}
 
 type MemberName = String
 
@@ -86,7 +86,7 @@ createCsvRow :: (Postcode, Response) -> ByteString
 createCsvRow (Postcode postcode, response) =
   case unpackResponse response of
     (Left (ErrorMessage message)) -> CSV.encode [(postcode, message)]
-    (Right (constituencyName, memberName)) -> CSV.encode [(postcode, constituencyName, memberName)]
+    (Right (ConstituencyName constituencyName, memberName)) -> CSV.encode [(postcode, constituencyName, memberName)]
 
 makeHttpCall :: Postcode -> IO (Postcode, Response)
 makeHttpCall postcode = runReq defaultHttpConfig $ do
@@ -96,11 +96,11 @@ makeHttpCall postcode = runReq defaultHttpConfig $ do
 unpackResponse :: Response -> Either ErrorMessage (ConstituencyName, MemberName)
 unpackResponse response =
   case items response of
-    [singleItem] -> Right (getConstituencyName singleItem, getMemberName singleItem)
+    [singleItem] -> Right (retrieveConstituencyName singleItem, getMemberName singleItem)
     [] -> Left (ErrorMessage "No results returned for postcode")
     _ -> Left (ErrorMessage "More than one result returned for postcode")
   where
-    getConstituencyName :: SearchResult -> String
-    getConstituencyName searchResult = name $ value searchResult
+    retrieveConstituencyName :: SearchResult -> ConstituencyName
+    retrieveConstituencyName searchResult = ConstituencyName $ name $ value searchResult
     getMemberName :: SearchResult -> String
     getMemberName searchResult = nameListAs $ memberValue $ member $ currentRepresentation $ value searchResult
