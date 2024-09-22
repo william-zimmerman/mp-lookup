@@ -13,6 +13,8 @@ newtype Postcode = Postcode {getPostcode :: String}
 
 newtype ErrorMessage = ErrorMessage {getMessage :: String}
 
+data ReportData = ReportData ConstituencyName MemberName
+
 newtype ConstituencyName = ConstituencyName {getConstituencyName :: String}
 
 newtype MemberName = MemberName {getMemberName :: String}
@@ -86,17 +88,17 @@ createCsvRow :: (Postcode, Response) -> ByteString
 createCsvRow (Postcode postcode, response) =
   case unpackResponse response of
     (Left (ErrorMessage message)) -> CSV.encode [(postcode, message)]
-    (Right (ConstituencyName constituencyName, MemberName memberName)) -> CSV.encode [(postcode, constituencyName, memberName)]
+    (Right (ReportData constituency member)) -> CSV.encode [(postcode, getConstituencyName constituency, getMemberName member)]
 
 makeHttpCall :: Postcode -> IO (Postcode, Response)
 makeHttpCall postcode = runReq defaultHttpConfig $ do
   v <- req GET (https "members-api.parliament.uk" /: "api" /: "Location" /: "Constituency" /: "Search") NoReqBody jsonResponse $ "searchText" =: getPostcode postcode
   return (postcode, responseBody v :: Response)
 
-unpackResponse :: Response -> Either ErrorMessage (ConstituencyName, MemberName)
+unpackResponse :: Response -> Either ErrorMessage ReportData
 unpackResponse response =
   case items response of
-    [singleItem] -> Right (retrieveConstituencyName singleItem, retrieveMemberName singleItem)
+    [singleItem] -> Right (ReportData (retrieveConstituencyName singleItem) (retrieveMemberName singleItem))
     [] -> Left (ErrorMessage "No results returned for postcode")
     _ -> Left (ErrorMessage "More than one result returned for postcode")
   where
