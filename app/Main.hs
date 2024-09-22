@@ -8,15 +8,14 @@ import Data.ByteString.Lazy (ByteString, writeFile)
 import qualified Data.Csv as CSV
 import GHC.Generics
 import Network.HTTP.Req
-import Text.Printf (printf)
 
 -- TODO:
 -- Use newtypes instead of types
 -- Include political party
 -- Create type for (Postcode, ResponseType)?
 
-type Postcode = String
-
+newtype Postcode = Postcode {getPostcode :: String}
+  
 type ErrorMessage = String
 
 type ConstituencyName = String
@@ -27,7 +26,8 @@ defaultPostcode :: String
 defaultPostcode = "E5 8AF"
 
 readPostcodes :: IO [Postcode]
-readPostcodes = lines <$> readFile "resources/simplified_postcodes.txt"
+readPostcodes = 
+  map Postcode . lines <$> readFile "resources/simplified_postcodes.txt"
 
 data Response = Response
   { items :: [SearchResult],
@@ -91,14 +91,14 @@ main = do
   Data.ByteString.Lazy.writeFile "resources/members.csv" csvContents
 
 createCsvRow :: (Postcode, Response) -> ByteString
-createCsvRow (postcode, response) =
+createCsvRow (Postcode postcode, response) =
   case unpackResponse response of
     (Left causingError) -> CSV.encode [(postcode, causingError)]
     (Right (constituencyName, memberName)) -> CSV.encode [(postcode, constituencyName, memberName)]
 
 makeHttpCall :: Postcode -> IO (Postcode, Response)
 makeHttpCall postcode = runReq defaultHttpConfig $ do
-  v <- req GET (https "members-api.parliament.uk" /: "api" /: "Location" /: "Constituency" /: "Search") NoReqBody jsonResponse $ "searchText" =: postcode
+  v <- req GET (https "members-api.parliament.uk" /: "api" /: "Location" /: "Constituency" /: "Search") NoReqBody jsonResponse $ "searchText" =: getPostcode postcode
   return (postcode, responseBody v :: Response)
 
 unpackResponse :: Response -> Either ErrorMessage (ConstituencyName, MemberName)
