@@ -13,6 +13,7 @@ import Network.HTTP.Req
 -- Use newtypes instead of types
 -- Include political party
 -- Create type for (Postcode, ResponseType)?
+-- Move Postcode into Lib, create parsing function that returns Maybe Postcode 
 
 newtype Postcode = Postcode {getPostcode :: String}
 
@@ -21,13 +22,6 @@ newtype ErrorMessage = ErrorMessage {getMessage :: String}
 type ConstituencyName = String
 
 type MemberName = String
-
-defaultPostcode :: String
-defaultPostcode = "E5 8AF"
-
-readPostcodes :: IO [Postcode]
-readPostcodes =
-  map Postcode . lines <$> readFile "resources/postcodes.txt"
 
 data Response = Response
   { items :: [SearchResult],
@@ -89,6 +83,10 @@ main = do
   responsesByPostcode <- mapM makeHttpCall postcodes
   let csvContents = foldMap createCsvRow responsesByPostcode
   Data.ByteString.Lazy.writeFile "resources/members.csv" csvContents
+
+readPostcodes :: IO [Postcode]
+readPostcodes =
+  map Postcode . lines <$> readFile "resources/postcodes.txt"
 
 createCsvRow :: (Postcode, Response) -> ByteString
 createCsvRow (Postcode postcode, response) =
