@@ -17,10 +17,10 @@ import Network.HTTP.Req
     (/:),
     (=:),
   )
-import Types as T
-  ( ConstituencyName (ConstituencyName),
-    Failure (Failure),
-    MemberName (MemberName),
+import qualified Types as T
+  ( Constituency (Constituency),
+    Failure (..),
+    Member (Member),
     Postcode (getPostcode),
     ReportData (..),
   )
@@ -84,17 +84,17 @@ getReportData postcode = unpackResponse postcode <$> makeHttpCall postcode
 
 makeHttpCall :: T.Postcode -> IO Response
 makeHttpCall postcode = runReq defaultHttpConfig $ do
-  v <- req GET (https "members-api.parliament.uk" /: "api" /: "Location" /: "Constituency" /: "Search") NoReqBody jsonResponse $ "searchText" =: getPostcode postcode
+  v <- req GET (https "members-api.parliament.uk" /: "api" /: "Location" /: "Constituency" /: "Search") NoReqBody jsonResponse $ "searchText" =: T.getPostcode postcode
   return (responseBody v :: Response)
 
 unpackResponse :: T.Postcode -> Response -> Either T.Failure T.ReportData
 unpackResponse postcode response =
   case items response of
-    [singleItem] -> Right (ReportData postcode (retrieveConstituencyName singleItem) (retrieveMemberName singleItem))
-    [] -> Left (Failure postcode "No results returned for postcode")
-    _ -> Left (Failure postcode "More than one result returned for postcode")
+    [singleItem] -> Right (T.ReportData postcode (retrieveConstituencyName singleItem) (retrieveMemberName singleItem))
+    [] -> Left (T.Failure postcode "No results returned for postcode")
+    _ -> Left (T.Failure postcode "More than one result returned for postcode")
   where
-    retrieveConstituencyName :: SearchResult -> ConstituencyName
-    retrieveConstituencyName searchResult = ConstituencyName $ name $ value searchResult
-    retrieveMemberName :: SearchResult -> MemberName
-    retrieveMemberName searchResult = MemberName $ nameListAs $ memberValue $ member $ currentRepresentation $ value searchResult
+    retrieveConstituencyName :: SearchResult -> T.Constituency
+    retrieveConstituencyName searchResult = T.Constituency $ name $ value searchResult
+    retrieveMemberName :: SearchResult -> T.Member
+    retrieveMemberName searchResult = T.Member $ nameListAs $ memberValue $ member $ currentRepresentation $ value searchResult

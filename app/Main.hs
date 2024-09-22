@@ -2,7 +2,7 @@ module Main (main) where
 
 import Data.ByteString.Lazy (ByteString, writeFile)
 import qualified Data.Csv as CSV
-import Types (ConstituencyName (..), Failure (..), MemberName (..), Postcode (..), ReportData (..))
+import Types (Constituency (getConstituencyName), Failure (..), Member (getMemberName), Postcode (..), ReportData (..))
 import Web.MembersApi (getReportData)
 
 main :: IO ()
