@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Web.MembersApi (getReportData) where
+-- https://members-api.parliament.uk/index.html
 
 import Data.Aeson (FromJSON, parseJSON, withObject, (.:))
 import GHC.Generics (Generic)
