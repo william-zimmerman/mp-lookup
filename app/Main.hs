@@ -2,7 +2,7 @@ module Main (main) where
 
 import Data.ByteString.Lazy (ByteString, writeFile)
 import qualified Data.Csv as CSV
-import Types (Constituency (getConstituencyName), Failure (..), Member (getMemberName, getLatestParty), Postcode (..), ReportData (..))
+import Types (Failure, Postcode (..), ReportData)
 import Web.MembersApi (getReportData)
 
 main :: IO ()
@@ -19,5 +19,5 @@ readPostcodes =
 createCsvRow :: Either Failure ReportData -> ByteString
 createCsvRow eitherFailureOrReportData =
   case eitherFailureOrReportData of
-    (Left (Failure postcode errorMessage)) -> CSV.encode [(getPostcode postcode, errorMessage)]
-    (Right (ReportData postcode constituency member)) -> CSV.encode [(getPostcode postcode, getConstituencyName constituency, getMemberName member, getLatestParty member)]
+    (Left failure) -> CSV.encode [failure]
+    (Right reportData) -> CSV.encode [reportData]

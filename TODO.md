@@ -5,4 +5,4 @@
 - [x] Move Postcode into Lib
 - [ ] Create parsing function that returns Maybe Postcode, remove Postcode ctor visibility
 - [ ] Add header to CSV
-- [ ] Configure CSV package to serialize records 
+- [x] Configure CSV package to serialize records 
