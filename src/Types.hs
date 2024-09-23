@@ -1,10 +1,7 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Types (Postcode (..), Failure (..), ReportData (..), Constituency (..), Member (..)) where
 
 import Data.Csv (ToRecord (toRecord), record)
 import Data.String (IsString (fromString))
-import GHC.Generics (Generic)
 
 newtype Postcode = Postcode {getPostcode :: String}
   deriving (Show)
@@ -19,7 +16,7 @@ instance ToRecord Failure where
   toRecord (Failure postcode' errorMessage') = record [fromString $ getPostcode postcode', fromString errorMessage']
 
 data ReportData = ReportData Postcode Constituency Member
-  deriving (Show, Generic)
+  deriving (Show)
 
 instance ToRecord ReportData where
   toRecord (ReportData postcode' constituency' member') =
