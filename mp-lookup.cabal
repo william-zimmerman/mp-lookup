@@ -56,12 +56,14 @@ executable mp-lookup-exe
   build-depends:
       aeson
     , base >=4.7 && <5
+    , brick
     , bytestring
     , cassava
     , modern-uri
     , mp-lookup
     , req
     , text
+    , vty
   default-language: Haskell2010
 
 test-suite mp-lookup-test

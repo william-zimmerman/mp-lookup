@@ -52,6 +52,8 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - mp-lookup
+    - brick
+    - vty
 
 tests:
   mp-lookup-test:
