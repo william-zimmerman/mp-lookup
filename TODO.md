@@ -6,6 +6,7 @@
 - [ ] Create parsing function that returns Maybe Postcode, remove Postcode ctor visibility
 - [ ] Add header to CSV
 - [x] Configure CSV package to serialize records 
+- [ ] Use lenses for API response value retrieval 
 
 ## UI TODO
 - [ ] User can enter an input file to be read for postcodes
