@@ -9,8 +9,9 @@
 - [ ] Use lenses for API response value retrieval 
 
 ## UI TODO
-- [ ] User can enter an input file to be read for postcodes
-- [ ] User is shown results of postcode search
+- [x] User can enter an input file to be read for postcodes
+- [ ] User is shown error when invalid file name is entered
+- [ ] User is shown results of postcode search in TUI
 - [ ] User is given option to write results to file
 - [ ] Progress bar is shown while HTTP calls are being made
 - [ ] User is presented with a file browser to select input file
