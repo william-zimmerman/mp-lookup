@@ -16,6 +16,7 @@ import Brick
     Widget,
     attrMap,
     defaultMain,
+    get,
     joinBorders,
     str,
     withBorderStyle,
@@ -23,34 +24,34 @@ import Brick
     (<+>),
   )
 import qualified Brick as Brick.Main
-import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderForm)
-import Brick.Widgets.Border (borderWithLabel, vBorder)
+import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderForm, (@@=))
+import Brick.Widgets.Border (borderWithLabel)
 import Brick.Widgets.Border.Style (unicode)
-import Brick.Widgets.Center (center)
-import Data.ByteString.Lazy (ByteString)
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.ByteString.Lazy (ByteString, writeFile)
 import qualified Data.Csv as CSV
 import qualified Data.Text as T
-import Graphics.Vty ( defAttr, Event(EvKey), Key(KEsc) )
+import Graphics.Vty (Event (EvKey), Key (KEnter, KEsc), defAttr)
+import Lens.Micro.Extras (view)
 import Lens.Micro.TH (makeLenses)
 import Text.Printf (printf)
 import Types (Failure, Postcode (..), ReportData)
+import Web.MembersApi (getReportData)
 
 data FormState = FormState
-  { _fileName :: T.Text,
-    _userName :: T.Text
+  { _fileName :: T.Text
   }
   deriving (Show)
 
 makeLenses ''FormState
 
-data ResourceName = FormFileName | FormUserName
+data ResourceName = FormFileName
   deriving (Eq, Ord, Show)
 
 makeForm :: FormState -> Form FormState () ResourceName
 makeForm =
   newForm
-    [ editTextField fileName FormFileName Nothing,
-      editTextField userName FormUserName Nothing
+    [ (str "File name: " <+>) @@= editTextField fileName FormFileName (Just 1)
     ]
 
 generateUi :: ApplicationState -> Widget ResourceName
@@ -58,8 +59,8 @@ generateUi (ApplicationState form) =
   joinBorders $
     withBorderStyle unicode $
       borderWithLabel
-        (str "Hello world!")
-        (center (str "Left") <+> vBorder <+> center (renderForm form))
+        (str "MP Lookup v0.1")
+        (renderForm form)
 
 data ApplicationState = ApplicationState {_form :: Form FormState () ResourceName}
 
@@ -71,24 +72,35 @@ main = do
         App
           { appDraw = \s -> [generateUi s],
             appChooseCursor = Brick.Main.showFirstCursor,
-            appHandleEvent = handleEvent,
+            appHandleEvent = eventHandler,
             appStartEvent = return (),
             appAttrMap = const $ attrMap defAttr []
           }
-      initialFormState = FormState (T.pack "Enter file name") (T.pack "Enter user name")
+      initialFormState = FormState T.empty
       initialApplicationState = ApplicationState $ makeForm initialFormState
   ApplicationState frm <- defaultMain app initialApplicationState
   putStrLn $ printf "Final state: %s" $ show $ formState frm
 
-handleEvent :: BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
-handleEvent event = do
+eventHandler :: BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
+eventHandler event = do
+  currentApplicationState <- get
+  let currentFormState = formState $ view form currentApplicationState
   case event of
     VtyEvent (EvKey KEsc []) -> Brick.Main.halt
-    _ -> zoom form $ handleFormEvent event
+    VtyEvent (EvKey KEnter []) -> liftIO $ doWork (T.unpack $ view fileName currentFormState)
+    _ -> zoom form (handleFormEvent event)
 
-readPostcodes :: IO [Postcode]
-readPostcodes =
-  map Postcode . lines <$> readFile "resources/postcodes.txt"
+doWork :: FilePath -> IO ()
+doWork filePath = do
+  postcodes <- readPostcodes filePath
+  failuresOrReportData <- mapM getReportData postcodes
+  let csvContents = foldMap createCsvRow failuresOrReportData
+  Data.ByteString.Lazy.writeFile "resources/members.csv" csvContents
+  putStrLn "Done!"
+
+readPostcodes :: FilePath -> IO [Postcode]
+readPostcodes filepath =
+  map Postcode . lines <$> readFile filepath
 
 createCsvRow :: Either Failure ReportData -> ByteString
 createCsvRow eitherFailureOrReportData =
