@@ -17,16 +17,19 @@ import Brick
     attrMap,
     defaultMain,
     get,
+    halt,
     joinBorders,
+    showFirstCursor,
     str,
     withBorderStyle,
     zoom,
     (<+>),
   )
-import qualified Brick as Brick.Main
 import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderForm, (@@=))
 import Brick.Widgets.Border (borderWithLabel)
 import Brick.Widgets.Border.Style (unicode)
+import Brick.Widgets.Core (hLimitPercent)
+import Brick.Widgets.Table (Table, renderTable, rowBorders, surroundingBorder, table)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString.Lazy (ByteString, writeFile)
 import qualified Data.Csv as CSV
@@ -54,13 +57,20 @@ makeForm =
     [ (str "File name: " <+>) @@= editTextField fileName FormFileName (Just 1)
     ]
 
+mainTable :: ApplicationState -> Table ResourceName
+mainTable (ApplicationState form) =
+  surroundingBorder False $
+    rowBorders False $
+      table
+        [ [hLimitPercent 100 $ borderWithLabel (str "MP Lookup v0.1") $ renderForm form]
+        ]
+
 generateUi :: ApplicationState -> Widget ResourceName
-generateUi (ApplicationState form) =
+generateUi applicationState =
   joinBorders $
     withBorderStyle unicode $
-      borderWithLabel
-        (str "MP Lookup v0.1")
-        (renderForm form)
+      renderTable $
+        mainTable applicationState
 
 data ApplicationState = ApplicationState {_form :: Form FormState () ResourceName}
 
@@ -71,7 +81,7 @@ main = do
   let app =
         App
           { appDraw = \s -> [generateUi s],
-            appChooseCursor = Brick.Main.showFirstCursor,
+            appChooseCursor = showFirstCursor,
             appHandleEvent = eventHandler,
             appStartEvent = return (),
             appAttrMap = const $ attrMap defAttr []
@@ -86,7 +96,7 @@ eventHandler event = do
   currentApplicationState <- get
   let currentFormState = formState $ view form currentApplicationState
   case event of
-    VtyEvent (EvKey KEsc []) -> Brick.Main.halt
+    VtyEvent (EvKey KEsc []) -> halt
     VtyEvent (EvKey KEnter []) -> liftIO $ doWork (T.unpack $ view fileName currentFormState)
     _ -> zoom form (handleFormEvent event)
 
