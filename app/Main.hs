@@ -28,7 +28,7 @@ import Brick
 import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderForm, (@@=))
 import Brick.Widgets.Border (borderWithLabel)
 import Brick.Widgets.Border.Style (unicode)
-import Brick.Widgets.Core (hLimitPercent)
+import Brick.Widgets.Core (emptyWidget, hLimitPercent)
 import Brick.Widgets.Table (Table, renderTable, rowBorders, surroundingBorder, table)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString.Lazy (ByteString, writeFile)
@@ -41,7 +41,7 @@ import Text.Printf (printf)
 import Types (Failure, Postcode (..), ReportData)
 import Web.MembersApi (getReportData)
 
-data FormState = FormState
+newtype FormState = FormState
   { _fileName :: T.Text
   }
   deriving (Show)
@@ -58,12 +58,16 @@ makeForm =
     ]
 
 mainTable :: ApplicationState -> Table ResourceName
-mainTable (ApplicationState form) =
+mainTable (ApplicationState form maybeMessage) =
   surroundingBorder False $
     rowBorders False $
       table
-        [ [hLimitPercent 100 $ borderWithLabel (str "MP Lookup v0.1") $ renderForm form]
+        [ [hLimitPercent 100 $ borderWithLabel (str "MP Lookup v0.1") $ renderForm form],
+          [hLimitPercent 100 messageWidget]
         ]
+  where
+    messageWidget :: Widget ResourceName
+    messageWidget = maybe emptyWidget str maybeMessage
 
 generateUi :: ApplicationState -> Widget ResourceName
 generateUi applicationState =
@@ -72,7 +76,10 @@ generateUi applicationState =
       renderTable $
         mainTable applicationState
 
-data ApplicationState = ApplicationState {_form :: Form FormState () ResourceName}
+data ApplicationState = ApplicationState
+  { _form :: Form FormState () ResourceName,
+    _userMessage :: Maybe String
+  }
 
 makeLenses ''ApplicationState
 
@@ -87,8 +94,8 @@ main = do
             appAttrMap = const $ attrMap defAttr []
           }
       initialFormState = FormState T.empty
-      initialApplicationState = ApplicationState $ makeForm initialFormState
-  ApplicationState frm <- defaultMain app initialApplicationState
+      initialApplicationState = ApplicationState (makeForm initialFormState) Nothing
+  ApplicationState frm _ <- defaultMain app initialApplicationState
   putStrLn $ printf "Final state: %s" $ show $ formState frm
 
 eventHandler :: BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
