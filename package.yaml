@@ -27,8 +27,8 @@ dependencies:
 - bytestring
 - modern-uri
 - cassava
-- microlens
-- microlens-th
+- microlens-platform
+- directory
 
 ghc-options:
 - -Wall

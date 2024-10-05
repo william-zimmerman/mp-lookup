@@ -35,8 +35,8 @@ import Data.ByteString.Lazy (ByteString, writeFile)
 import qualified Data.Csv as CSV
 import qualified Data.Text as T
 import Graphics.Vty (Event (EvKey), Key (KEnter, KEsc), defAttr)
-import Lens.Micro.Extras (view)
-import Lens.Micro.TH (makeLenses)
+import Lens.Micro.Platform (makeLenses, modifying, over, view)
+import System.Directory (doesFileExist)
 import Text.Printf (printf)
 import Types (Failure, Postcode (..), ReportData)
 import Web.MembersApi (getReportData)
@@ -104,16 +104,29 @@ eventHandler event = do
   let currentFormState = formState $ view form currentApplicationState
   case event of
     VtyEvent (EvKey KEsc []) -> halt
-    VtyEvent (EvKey KEnter []) -> liftIO $ doWork (T.unpack $ view fileName currentFormState)
+    VtyEvent (EvKey KEnter []) -> do
+      results <- liftIO $ doWork (T.unpack $ view fileName currentFormState)
+      case results of
+        Success -> modifying userMessage (const $ Just "Done!")
+        Failure errorMessage -> modifying userMessage (const $ Just errorMessage)
+      return ()
     _ -> zoom form (handleFormEvent event)
 
-doWork :: FilePath -> IO ()
+type ErrorMessage = String
+
+data Outcome = Success | Failure ErrorMessage
+
+doWork :: FilePath -> IO Outcome
 doWork filePath = do
-  postcodes <- readPostcodes filePath
-  failuresOrReportData <- mapM getReportData postcodes
-  let csvContents = foldMap createCsvRow failuresOrReportData
-  Data.ByteString.Lazy.writeFile "resources/members.csv" csvContents
-  putStrLn "Done!"
+  fileExists <- doesFileExist filePath
+  if not fileExists
+    then return $ Failure (printf "File %s does not exist" $ show filePath)
+    else do
+      postcodes <- readPostcodes filePath
+      failuresOrReportData <- mapM getReportData postcodes
+      let csvContents = foldMap createCsvRow failuresOrReportData
+      Data.ByteString.Lazy.writeFile "resources/members.csv" csvContents
+      return Success
 
 readPostcodes :: FilePath -> IO [Postcode]
 readPostcodes filepath =

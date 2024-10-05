@@ -39,8 +39,8 @@ library
     , base >=4.7 && <5
     , bytestring
     , cassava
-    , microlens
-    , microlens-th
+    , directory
+    , microlens-platform
     , modern-uri
     , req
     , text
@@ -61,8 +61,8 @@ executable mp-lookup-exe
     , brick
     , bytestring
     , cassava
-    , microlens
-    , microlens-th
+    , directory
+    , microlens-platform
     , modern-uri
     , mp-lookup
     , req
@@ -85,8 +85,8 @@ test-suite mp-lookup-test
     , base >=4.7 && <5
     , bytestring
     , cassava
-    , microlens
-    , microlens-th
+    , directory
+    , microlens-platform
     , modern-uri
     , mp-lookup
     , req
