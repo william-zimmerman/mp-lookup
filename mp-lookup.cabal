@@ -49,6 +49,7 @@ library
 executable mp-lookup-exe
   main-is: Main.hs
   other-modules:
+      UserInterface
       Paths_mp_lookup
   autogen-modules:
       Paths_mp_lookup
