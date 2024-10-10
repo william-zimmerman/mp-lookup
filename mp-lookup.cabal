@@ -44,6 +44,7 @@ library
     , modern-uri
     , req
     , text
+    , vector
   default-language: Haskell2010
 
 executable mp-lookup-exe
@@ -68,6 +69,7 @@ executable mp-lookup-exe
     , mp-lookup
     , req
     , text
+    , vector
     , vty
   default-language: Haskell2010
 
@@ -92,4 +94,5 @@ test-suite mp-lookup-test
     , mp-lookup
     , req
     , text
+    , vector
   default-language: Haskell2010

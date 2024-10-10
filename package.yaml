@@ -29,6 +29,7 @@ dependencies:
 - cassava
 - microlens-platform
 - directory
+- vector
 
 ghc-options:
 - -Wall
