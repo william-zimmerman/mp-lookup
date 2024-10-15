@@ -27,63 +27,54 @@ import Brick
 import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderForm, (@@=))
 import Brick.Widgets.Border (borderWithLabel)
 import Brick.Widgets.Border.Style (unicode)
-import Brick.Widgets.Core (emptyWidget, hLimitPercent, vLimit, viewport, vLimitPercent)
-import Brick.Widgets.List (List, list, renderList, handleListEvent)
+import Brick.Widgets.Core (emptyWidget, hLimitPercent, vLimitPercent)
+import Brick.Widgets.List (GenericList, list, renderList)
 import Brick.Widgets.Table (Table, renderTable, rowBorders, surroundingBorder, table)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Data.Text as T
+import Data.Vector (Vector, empty)
 import Graphics.Vty (Event (EvKey), Key (KEnter, KEsc), defAttr)
 import Lens.Micro.Platform (makeLenses, modifying, view)
-import Data.Vector (singleton, replicate)
 
 data FormState = FormState
-  { _fileName :: T.Text,
-    _newField :: T.Text
+  { _fileName :: T.Text
   }
   deriving (Show)
 
 makeLenses ''FormState
 
-data ResourceName = FormFileName | FormNewField | Viewport | ResultList
+data ResourceName = FormFileName | FormNewField | ResultList
   deriving (Eq, Ord, Show)
 
 data ApplicationState = ApplicationState
   { _form :: Form FormState () ResourceName,
-    _userMessage :: Maybe String
+    _userMessage :: Maybe String,
+    _list :: GenericList ResourceName Vector String
   }
 
-data ListItem = ListItem {
-  name :: String
-}
-
 instance Show ApplicationState where
-  show (ApplicationState form' maybeMessage) = "ApplicationState {form = " ++ show (formState form') ++ ", userMessage = " ++ show maybeMessage ++ "}"
+  show (ApplicationState form' maybeMessage _) = "ApplicationState {form = " ++ show (formState form') ++ ", userMessage = " ++ show maybeMessage ++ "}"
 
 makeLenses ''ApplicationState
 
 inputForm :: FormState -> Form FormState () ResourceName
 inputForm =
   newForm
-    [ (str "File name: " <+>) @@= editTextField fileName FormFileName (Just 1),
-      (str "New field: " <+>) @@= editTextField newField FormNewField (Just 1)
+    [ (str "File name: " <+>) @@= editTextField fileName FormFileName (Just 1)
     ]
 
 mainTable :: ApplicationState -> Table ResourceName
-mainTable (ApplicationState form' maybeMessage) =
+mainTable (ApplicationState form' maybeMessage list') =
   surroundingBorder False $
     rowBorders False $
       table
-        [ 
-          [vLimitPercent 100 $ hLimitPercent 100 $ renderList renderListFunc True resultList ]
+        [ [hLimitPercent 100 $ borderWithLabel (str "MP Lookup v0.1") $ renderForm form'],
+          [hLimitPercent 100 $ maybe emptyWidget str maybeMessage],
+          [vLimitPercent 100 $ hLimitPercent 100 $ renderList renderListFunc False list']
         ]
 
 renderListFunc :: Bool -> String -> Widget ResourceName
-renderListFunc isSelected = case isSelected of
-  True -> borderWithLabel (str "Selected") . str
-  False -> str
-
-resultList :: List ResourceName String
-resultList = list ResultList (Data.Vector.replicate 5 "Hello world!") 1
+renderListFunc _ = str
 
 ui :: ApplicationState -> Widget ResourceName
 ui applicationState =
@@ -93,10 +84,10 @@ ui applicationState =
         mainTable applicationState
 
 eventHandler :: (FilePath -> IO Outcome) -> BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
-eventHandler workFunction event = do
+eventHandler workFunction brickEvent = do
   currentApplicationState <- get
   let currentFormState = formState $ view form currentApplicationState
-  case event of
+  case brickEvent of
     VtyEvent (EvKey KEsc []) -> halt
     VtyEvent (EvKey KEnter []) -> do
       results <- liftIO $ workFunction (T.unpack $ view fileName currentFormState)
@@ -104,8 +95,7 @@ eventHandler workFunction event = do
         Success -> modifying userMessage (const $ Just "Done!")
         Failure errorMessage -> modifying userMessage (const $ Just errorMessage)
       return ()
-    VtyEvent (event) -> handleListEvent event
-    _ -> zoom form (handleFormEvent event)
+    _ -> zoom form (handleFormEvent brickEvent)
 
 type ErrorMessage = String
 
@@ -122,7 +112,9 @@ app workFunction =
     }
 
 initialApplicationState :: ApplicationState
-initialApplicationState = ApplicationState (inputForm initialFormState) Nothing
+initialApplicationState = ApplicationState (inputForm initialFormState) Nothing initialList
   where
     initialFormState :: FormState
-    initialFormState = FormState T.empty T.empty
+    initialFormState = FormState T.empty
+    initialList :: GenericList ResourceName Vector String
+    initialList = Brick.Widgets.List.list ResultList Data.Vector.empty 1
