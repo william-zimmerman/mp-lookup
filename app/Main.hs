@@ -24,14 +24,16 @@ doWork filePath = do
       failuresOrReportData <- mapM getReportData postcodes
       let csvContents = foldMap createCsvRow failuresOrReportData
       Data.ByteString.Lazy.writeFile "resources/members.csv" csvContents
-      return Success
+      return (Success $ map createListItem failuresOrReportData)
 
 readPostcodes :: FilePath -> IO [Postcode]
 readPostcodes filepath =
   map Postcode . lines <$> readFile filepath
 
 createCsvRow :: Either Failure ReportData -> ByteString
-createCsvRow eitherFailureOrReportData =
-  case eitherFailureOrReportData of
-    (Left failure) -> CSV.encode [failure]
-    (Right reportData) -> CSV.encode [reportData]
+createCsvRow (Left failure) = CSV.encode [failure]
+createCsvRow (Right reportData) = CSV.encode [reportData]
+
+createListItem :: Either Failure ReportData -> String
+createListItem (Left failure) = show failure
+createListItem (Right reportData) = show reportData

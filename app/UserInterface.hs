@@ -28,11 +28,11 @@ import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderFo
 import Brick.Widgets.Border (borderWithLabel)
 import Brick.Widgets.Border.Style (unicode)
 import Brick.Widgets.Core (emptyWidget, hLimitPercent, vLimitPercent)
-import Brick.Widgets.List (GenericList, list, renderList)
+import Brick.Widgets.List (GenericList, list, renderList, listReplace)
 import Brick.Widgets.Table (Table, renderTable, rowBorders, surroundingBorder, table)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Data.Text as T
-import Data.Vector (Vector, empty)
+import Data.Vector (Vector, empty, fromList)
 import Graphics.Vty (Event (EvKey), Key (KEnter, KEsc), defAttr)
 import Lens.Micro.Platform (makeLenses, modifying, view)
 
@@ -92,14 +92,14 @@ eventHandler workFunction brickEvent = do
     VtyEvent (EvKey KEnter []) -> do
       results <- liftIO $ workFunction (T.unpack $ view fileName currentFormState)
       case results of
-        Success -> modifying userMessage (const $ Just "Done!")
+        Success listItems -> modifying UserInterface.list $ listReplace (fromList listItems) Nothing
         Failure errorMessage -> modifying userMessage (const $ Just errorMessage)
       return ()
     _ -> zoom form (handleFormEvent brickEvent)
 
 type ErrorMessage = String
 
-data Outcome = Success | Failure ErrorMessage
+data Outcome = Success [String] | Failure ErrorMessage
 
 app :: (FilePath -> IO Outcome) -> App ApplicationState () ResourceName
 app workFunction =
