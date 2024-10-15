@@ -28,7 +28,7 @@ import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderFo
 import Brick.Widgets.Border (borderWithLabel)
 import Brick.Widgets.Border.Style (unicode)
 import Brick.Widgets.Core (emptyWidget, hLimitPercent, vLimitPercent)
-import Brick.Widgets.List (GenericList, list, renderList, listReplace)
+import Brick.Widgets.List (GenericList, list, renderList, listReplace, listClear)
 import Brick.Widgets.Table (Table, renderTable, rowBorders, surroundingBorder, table)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Data.Text as T
@@ -92,8 +92,12 @@ eventHandler workFunction brickEvent = do
     VtyEvent (EvKey KEnter []) -> do
       results <- liftIO $ workFunction (T.unpack $ view fileName currentFormState)
       case results of
-        Success listItems -> modifying UserInterface.list $ listReplace (fromList listItems) Nothing
-        Failure errorMessage -> modifying userMessage (const $ Just errorMessage)
+        Success listItems -> do
+          modifying UserInterface.userMessage (const Nothing)
+          modifying UserInterface.list $ listReplace (fromList listItems) Nothing
+        Failure errorMessage -> do
+          modifying UserInterface.userMessage (const $ Just errorMessage)
+          modifying UserInterface.list listClear
       return ()
     _ -> zoom form (handleFormEvent brickEvent)
 
