@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Web.MembersApi (performMpLookup) where
+
 -- https://members-api.parliament.uk/index.html
 
 import Data.Aeson (FromJSON, parseJSON, withObject, (.:))
@@ -18,12 +19,13 @@ import Network.HTTP.Req
     (/:),
     (=:),
   )
+import Text.Printf (printf)
 import qualified Types as T
   ( Constituency (Constituency),
-    Failure (..),
+    ErrorMessage (..),
     Member (Member),
-    Postcode (getPostcode),
     MpData (..),
+    Postcode (getPostcode),
   )
 
 data ConstituencyMembersSearchServiceResult = ConstituencyMembersSearchServiceResult
@@ -66,7 +68,8 @@ data MemberItem = MemberItem
 instance FromJSON MemberItem where
   parseJSON = withObject "MemberItem" $ \v ->
     MemberItem
-      <$> v .: "value"
+      <$> v
+      .: "value"
 
 data Member = Member
   { memberValueId :: Int,
@@ -78,9 +81,12 @@ data Member = Member
 instance FromJSON Member where
   parseJSON = withObject "Member" $ \v ->
     Member
-      <$> v .: "id"
-      <*> v .: "nameListAs"
-      <*> v .: "latestParty"
+      <$> v
+      .: "id"
+      <*> v
+      .: "nameListAs"
+      <*> v
+      .: "latestParty"
 
 data Party = Party
   { partyName :: String,
@@ -91,10 +97,12 @@ data Party = Party
 instance FromJSON Party where
   parseJSON = withObject "Party" $ \v ->
     Party
-      <$> v .: "name"
-      <*> v .: "abbreviation"
+      <$> v
+      .: "name"
+      <*> v
+      .: "abbreviation"
 
-performMpLookup :: T.Postcode -> IO (Either T.Failure T.MpData)
+performMpLookup :: T.Postcode -> IO (Either T.ErrorMessage T.MpData)
 performMpLookup postcode = unpackSearchResult postcode <$> callConstituencyMembersSearchService postcode
 
 callConstituencyMembersSearchService ::
@@ -104,12 +112,12 @@ callConstituencyMembersSearchService
     v <- req GET (https "members-api.parliament.uk" /: "api" /: "Location" /: "Constituency" /: "Search") NoReqBody jsonResponse $ "searchText" =: T.getPostcode postcode
     return (responseBody v :: ConstituencyMembersSearchServiceResult)
 
-unpackSearchResult :: T.Postcode -> ConstituencyMembersSearchServiceResult -> Either T.Failure T.MpData
+unpackSearchResult :: T.Postcode -> ConstituencyMembersSearchServiceResult -> Either T.ErrorMessage T.MpData
 unpackSearchResult postcode response =
   case items response of
     [singleItem] -> Right (T.MpData postcode (retrieveConstituency singleItem) (retrieveMember singleItem))
-    [] -> Left (T.Failure postcode "No results returned for postcode")
-    _ -> Left (T.Failure postcode "More than one result returned for postcode")
+    [] -> Left (T.MkErrorMessage $ printf "No results returned for postcode '%s'" (T.getPostcode postcode))
+    _ -> Left (T.MkErrorMessage $ printf "More than one result returned for postcode '%s'" (T.getPostcode postcode))
   where
     retrieveConstituency :: ConstituencyItem -> T.Constituency
     retrieveConstituency searchResult = T.Constituency $ name $ value searchResult

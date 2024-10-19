@@ -5,7 +5,7 @@ import Data.ByteString.Lazy (ByteString, writeFile)
 import qualified Data.Csv as CSV
 import System.Directory (doesFileExist)
 import Text.Printf (printf)
-import Types (Failure, Postcode (..), MpData)
+import Types (ErrorMessage, Postcode (..), MpData)
 import UserInterface (Outcome (..), app, initialApplicationState)
 import Web.MembersApi (performMpLookup)
 
@@ -30,10 +30,10 @@ readPostcodes :: FilePath -> IO [Postcode]
 readPostcodes filepath =
   map Postcode . lines <$> readFile filepath
 
-createCsvRow :: Either Failure MpData -> ByteString
-createCsvRow (Left failure) = CSV.encode [failure]
-createCsvRow (Right reportData) = CSV.encode [reportData]
+createCsvRow :: Either ErrorMessage MpData -> ByteString
+createCsvRow (Left errorMessage) = CSV.encode [errorMessage]
+createCsvRow (Right mpData) = CSV.encode [mpData]
 
-createListItem :: Either Failure MpData -> String
-createListItem (Left failure) = show failure
-createListItem (Right reportData) = show reportData
+createListItem :: Either ErrorMessage MpData -> String
+createListItem (Left errorMessage) = show errorMessage
+createListItem (Right mpData) = show mpData
