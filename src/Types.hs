@@ -1,4 +1,4 @@
-module Types (Postcode (..), Failure (..), ReportData (..), Constituency (..), Member (..)) where
+module Types (Postcode (..), Failure (..), MpData (..), Constituency (..), Member (..)) where
 
 import Data.Csv (ToRecord (toRecord), record)
 import Data.String (IsString (fromString))
@@ -15,11 +15,11 @@ data Failure = Failure
 instance ToRecord Failure where
   toRecord (Failure postcode' errorMessage') = record [fromString $ getPostcode postcode', fromString errorMessage']
 
-data ReportData = ReportData Postcode Constituency Member
+data MpData = MpData Postcode Constituency Member
   deriving (Show)
 
-instance ToRecord ReportData where
-  toRecord (ReportData postcode' constituency' member') =
+instance ToRecord MpData where
+  toRecord (MpData postcode' constituency' member') =
     record
       [ fromString $ getPostcode postcode',
         fromString $ getConstituencyName constituency',

@@ -23,7 +23,7 @@ import qualified Types as T
     Failure (..),
     Member (Member),
     Postcode (getPostcode),
-    ReportData (..),
+    MpData (..),
   )
 
 data ConstituencyMembersSearchServiceResult = ConstituencyMembersSearchServiceResult
@@ -94,7 +94,7 @@ instance FromJSON Party where
       <$> v .: "name"
       <*> v .: "abbreviation"
 
-getReportData :: T.Postcode -> IO (Either T.Failure T.ReportData)
+getReportData :: T.Postcode -> IO (Either T.Failure T.MpData)
 getReportData postcode = unpackSearchResult postcode <$> callConstituencyMembersSearchService postcode
 
 callConstituencyMembersSearchService ::
@@ -104,10 +104,10 @@ callConstituencyMembersSearchService
     v <- req GET (https "members-api.parliament.uk" /: "api" /: "Location" /: "Constituency" /: "Search") NoReqBody jsonResponse $ "searchText" =: T.getPostcode postcode
     return (responseBody v :: ConstituencyMembersSearchServiceResult)
 
-unpackSearchResult :: T.Postcode -> ConstituencyMembersSearchServiceResult -> Either T.Failure T.ReportData
+unpackSearchResult :: T.Postcode -> ConstituencyMembersSearchServiceResult -> Either T.Failure T.MpData
 unpackSearchResult postcode response =
   case items response of
-    [singleItem] -> Right (T.ReportData postcode (retrieveConstituency singleItem) (retrieveMember singleItem))
+    [singleItem] -> Right (T.MpData postcode (retrieveConstituency singleItem) (retrieveMember singleItem))
     [] -> Left (T.Failure postcode "No results returned for postcode")
     _ -> Left (T.Failure postcode "More than one result returned for postcode")
   where
