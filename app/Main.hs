@@ -5,9 +5,22 @@ import Data.ByteString.Lazy (ByteString, writeFile)
 import qualified Data.Csv as CSV
 import System.Directory (doesFileExist)
 import Text.Printf (printf)
-import Types (ErrorMessage, Postcode (..), MpData)
+import Types (ErrorMessage(..), Postcode (..), MpData)
 import UserInterface (Outcome (..), app, initialApplicationState)
 import Web.MembersApi (performMpLookup)
+
+data AppFunctions = AppFunctions {
+  readPostcodes :: FilePath -> IO (Either ErrorMessage [Postcode])
+}
+
+appFunctions :: AppFunctions
+appFunctions = AppFunctions {
+  readPostcodes = \filePath -> do
+    fileExists <- doesFileExist filePath
+    if fileExists
+      then Right . map Postcode . lines <$> readFile filePath
+      else return (Left (MkErrorMessage "File does not exist"))
+}
 
 main :: IO ()
 main = do
@@ -20,14 +33,14 @@ doWork filePath = do
   if not fileExists
     then return $ Failure (printf "File %s does not exist" $ show filePath)
     else do
-      postcodes <- readPostcodes filePath
+      postcodes <- readPostcodes' filePath
       failuresOrReportData <- mapM performMpLookup postcodes
       let csvContents = foldMap createCsvRow failuresOrReportData
       Data.ByteString.Lazy.writeFile "resources/members.csv" csvContents
       return (Success $ map createListItem failuresOrReportData)
 
-readPostcodes :: FilePath -> IO [Postcode]
-readPostcodes filepath =
+readPostcodes' :: FilePath -> IO [Postcode]
+readPostcodes' filepath =
   map Postcode . lines <$> readFile filepath
 
 createCsvRow :: Either ErrorMessage MpData -> ByteString
