@@ -11,7 +11,8 @@
 ## UI TODO
 - [x] User can enter an input file to be read for postcodes
 - [x] User is shown error when invalid file name is entered
-- [ ] User is shown results of postcode search in TUI
+- [x] User is shown results of postcode search in TUI
+- [ ] User is shown nicely formatted results in TUI
 - [ ] User is given option to write results to file
 - [ ] Progress bar is shown while HTTP calls are being made
 - [ ] User is presented with a file browser to select input file
