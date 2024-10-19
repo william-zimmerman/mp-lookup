@@ -10,7 +10,8 @@ import UserInterface (Outcome (..), app, initialApplicationState)
 import Web.MembersApi (performMpLookup)
 
 data AppFunctions = AppFunctions {
-  readPostcodes :: FilePath -> IO (Either ErrorMessage [Postcode])
+  readPostcodes :: FilePath -> IO (Either ErrorMessage [Postcode]),
+  lookupMp :: Postcode -> IO (Either ErrorMessage MpData)
 }
 
 appFunctions :: AppFunctions
@@ -19,7 +20,8 @@ appFunctions = AppFunctions {
     fileExists <- doesFileExist filePath
     if fileExists
       then Right . map Postcode . lines <$> readFile filePath
-      else return (Left (MkErrorMessage "File does not exist"))
+      else return (Left (MkErrorMessage "File does not exist")),
+  lookupMp = performMpLookup
 }
 
 main :: IO ()
