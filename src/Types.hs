@@ -1,4 +1,4 @@
-module Types (Postcode (..), Failure (..), MpData (..), Constituency (..), Member (..)) where
+module Types (Postcode (..), Failure (..), MpData (..), Constituency (..), Member (..), ErrorMessage (..)) where
 
 import Data.Csv (ToRecord (toRecord), record)
 import Data.String (IsString (fromString))
@@ -33,5 +33,10 @@ newtype Constituency = Constituency {getConstituencyName :: String}
 data Member = Member
   { getMemberName :: String,
     getLatestParty :: String
+  }
+  deriving (Show)
+
+newtype ErrorMessage = MkErrorMessage
+  { unErrorMessage :: String
   }
   deriving (Show)
