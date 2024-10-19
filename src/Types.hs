@@ -1,4 +1,4 @@
-module Types (Postcode (..), MpData (..), Constituency (..), Member (..), ErrorMessage (..)) where
+module Types (Postcode (..), MpData (..), Constituency (..), Member (..), ErrorMessage (..), AppFunctions (..)) where
 
 import Data.Csv (ToRecord (toRecord), record)
 import Data.String (IsString (fromString))
@@ -34,3 +34,9 @@ newtype ErrorMessage = MkErrorMessage
 
 instance ToRecord ErrorMessage where
   toRecord (MkErrorMessage message) = record [fromString message]
+
+data AppFunctions = AppFunctions
+  { readPostcodes :: FilePath -> IO (Either ErrorMessage [Postcode]),
+    lookupMp :: Postcode -> IO (Either ErrorMessage MpData),
+    writeCsv :: FilePath -> [Either ErrorMessage MpData] -> IO ()
+  }

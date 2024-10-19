@@ -5,28 +5,23 @@ import Data.ByteString.Lazy (ByteString, writeFile)
 import qualified Data.Csv as CSV
 import System.Directory (doesFileExist)
 import Text.Printf (printf)
-import Types (ErrorMessage(..), Postcode (..), MpData)
+import Types (AppFunctions (..), ErrorMessage (..), MpData, Postcode (..))
 import UserInterface (Outcome (..), app, initialApplicationState)
 import Web.MembersApi (performMpLookup)
 
-data AppFunctions = AppFunctions {
-  readPostcodes :: FilePath -> IO (Either ErrorMessage [Postcode]),
-  lookupMp :: Postcode -> IO (Either ErrorMessage MpData),
-  writeCsv :: FilePath -> [Either ErrorMessage MpData] -> IO ()
-}
-
 appFunctions :: AppFunctions
-appFunctions = AppFunctions {
-  readPostcodes = \filePath -> do
-    fileExists <- doesFileExist filePath
-    if fileExists
-      then Right . map Postcode . lines <$> readFile filePath
-      else return (Left (MkErrorMessage "File does not exist")),
-  lookupMp = performMpLookup,
-  writeCsv = \filePath errorMessagesOrData -> do
-    let csvContents = foldMap createCsvRow errorMessagesOrData
-    Data.ByteString.Lazy.writeFile filePath csvContents
-}
+appFunctions =
+  AppFunctions
+    { readPostcodes = \filePath -> do
+        fileExists <- doesFileExist filePath
+        if fileExists
+          then Right . map Postcode . lines <$> readFile filePath
+          else return (Left (MkErrorMessage "File does not exist")),
+      lookupMp = performMpLookup,
+      writeCsv = \filePath errorMessagesOrData -> do
+        let csvContents = foldMap createCsvRow errorMessagesOrData
+        Data.ByteString.Lazy.writeFile filePath csvContents
+    }
 
 main :: IO ()
 main = do
