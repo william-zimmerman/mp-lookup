@@ -7,6 +7,7 @@
 - [ ] Add header to CSV
 - [x] Configure CSV package to serialize records 
 - [ ] Use lenses for API response value retrieval 
+- [ ] Move all CSV logic (including ToRecord instances) to separate module
 
 ## UI TODO
 - [x] User can enter an input file to be read for postcodes
