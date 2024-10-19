@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Web.MembersApi (getReportData) where
+module Web.MembersApi (performMpLookup) where
 -- https://members-api.parliament.uk/index.html
 
 import Data.Aeson (FromJSON, parseJSON, withObject, (.:))
@@ -94,8 +94,8 @@ instance FromJSON Party where
       <$> v .: "name"
       <*> v .: "abbreviation"
 
-getReportData :: T.Postcode -> IO (Either T.Failure T.MpData)
-getReportData postcode = unpackSearchResult postcode <$> callConstituencyMembersSearchService postcode
+performMpLookup :: T.Postcode -> IO (Either T.Failure T.MpData)
+performMpLookup postcode = unpackSearchResult postcode <$> callConstituencyMembersSearchService postcode
 
 callConstituencyMembersSearchService ::
   T.Postcode -> IO ConstituencyMembersSearchServiceResult

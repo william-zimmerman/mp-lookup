@@ -7,7 +7,7 @@ import System.Directory (doesFileExist)
 import Text.Printf (printf)
 import Types (Failure, Postcode (..), MpData)
 import UserInterface (Outcome (..), app, initialApplicationState)
-import Web.MembersApi (getReportData)
+import Web.MembersApi (performMpLookup)
 
 main :: IO ()
 main = do
@@ -21,7 +21,7 @@ doWork filePath = do
     then return $ Failure (printf "File %s does not exist" $ show filePath)
     else do
       postcodes <- readPostcodes filePath
-      failuresOrReportData <- mapM getReportData postcodes
+      failuresOrReportData <- mapM performMpLookup postcodes
       let csvContents = foldMap createCsvRow failuresOrReportData
       Data.ByteString.Lazy.writeFile "resources/members.csv" csvContents
       return (Success $ map createListItem failuresOrReportData)
