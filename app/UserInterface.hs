@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module UserInterface (app, initialApplicationState, Outcome (..)) where
+module UserInterface (app, initialApplicationState) where
 
 import Brick
   ( App
@@ -28,13 +28,15 @@ import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderFo
 import Brick.Widgets.Border (borderWithLabel)
 import Brick.Widgets.Border.Style (unicode)
 import Brick.Widgets.Core (emptyWidget, hLimitPercent, vLimitPercent)
-import Brick.Widgets.List (GenericList, list, renderList, listReplace, listClear)
+import Brick.Widgets.List (GenericList, list, listClear, listReplace, renderList)
 import Brick.Widgets.Table (Table, renderTable, rowBorders, surroundingBorder, table)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Data.Text as T
 import Data.Vector (Vector, empty, fromList)
 import Graphics.Vty (Event (EvKey), Key (KEnter, KEsc), defAttr)
 import Lens.Micro.Platform (makeLenses, modifying, view)
+import Text.Printf (printf)
+import Types (AppFunctions (..), Constituency (..), ErrorMessage (..), Member (..), MpData (..), Postcode (..))
 
 data FormState = FormState
   { _fileName :: T.Text
@@ -83,34 +85,31 @@ ui applicationState =
       renderTable $
         mainTable applicationState
 
-eventHandler :: (FilePath -> IO Outcome) -> BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
-eventHandler workFunction brickEvent = do
+eventHandler :: AppFunctions -> BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
+eventHandler appFunctions brickEvent = do
   currentApplicationState <- get
   let currentFormState = formState $ view form currentApplicationState
   case brickEvent of
     VtyEvent (EvKey KEsc []) -> halt
     VtyEvent (EvKey KEnter []) -> do
-      results <- liftIO $ workFunction (T.unpack $ view fileName currentFormState)
-      case results of
-        Success listItems -> do
+      readResults <- liftIO $ readPostcodes appFunctions (T.unpack $ view fileName currentFormState)
+      case readResults of
+        (Right postCodes) -> do
+          mpLookupResults <- liftIO $ mapM (lookupMp appFunctions) postCodes
           modifying UserInterface.userMessage (const Nothing)
-          modifying UserInterface.list $ listReplace (fromList listItems) Nothing
-        Failure errorMessage -> do
+          modifying UserInterface.list $ listReplace (fromList $ map toListItem mpLookupResults) Nothing
+        (Left (MkErrorMessage errorMessage)) -> do
           modifying UserInterface.userMessage (const $ Just errorMessage)
           modifying UserInterface.list listClear
       return ()
     _ -> zoom form (handleFormEvent brickEvent)
 
-type ErrorMessage = String
-
-data Outcome = Success [String] | Failure ErrorMessage
-
-app :: (FilePath -> IO Outcome) -> App ApplicationState () ResourceName
-app workFunction =
+app :: AppFunctions -> App ApplicationState () ResourceName
+app appFunctions =
   App
     { appDraw = \s -> [ui s],
       appChooseCursor = showFirstCursor,
-      appHandleEvent = eventHandler workFunction,
+      appHandleEvent = eventHandler appFunctions,
       appStartEvent = return (),
       appAttrMap = const $ attrMap defAttr []
     }
@@ -122,3 +121,8 @@ initialApplicationState = ApplicationState (inputForm initialFormState) Nothing 
     initialFormState = FormState T.empty
     initialList :: GenericList ResourceName Vector String
     initialList = Brick.Widgets.List.list ResultList Data.Vector.empty 1
+
+toListItem :: Either ErrorMessage MpData -> String
+toListItem (Left errorMessage) = unErrorMessage errorMessage
+toListItem (Right (MpData postcode constituency member)) =
+  printf "%s (%s): %s" (getPostcode postcode) (getConstituencyName constituency) (getMemberName member)
