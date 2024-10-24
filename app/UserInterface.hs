@@ -25,7 +25,7 @@ import Brick
     (<+>),
   )
 import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderForm, (@@=))
-import Brick.Widgets.Border (borderWithLabel)
+import Brick.Widgets.Border (borderWithLabel, hBorder)
 import Brick.Widgets.Border.Style (unicode)
 import Brick.Widgets.Core (emptyWidget, hLimitPercent, vLimitPercent)
 import Brick.Widgets.List (GenericList, list, listClear, listReplace, renderList)
@@ -65,15 +65,26 @@ inputForm =
     [ (str "File name: " <+>) @@= editTextField fileName FormFileName (Just 1)
     ]
 
-mainTable :: ApplicationState -> Table ResourceName
-mainTable (ApplicationState form' maybeMessage list') =
+parentTable :: ApplicationState -> Table ResourceName
+parentTable applicationState =
   surroundingBorder False $
     rowBorders False $
       table
-        [ [hLimitPercent 100 $ borderWithLabel (str "MP Lookup v0.1") $ renderForm form'],
-          [hLimitPercent 100 $ maybe emptyWidget str maybeMessage],
-          [vLimitPercent 100 $ hLimitPercent 100 $ renderList renderListFunc False list']
+        [ [hLimitPercent 100 $ vLimitPercent 98 $ borderWithLabel (str "MP Lookup v0.1") $ renderTable (childTable applicationState)],
+          [hLimitPercent 100 $ str " esc: exit"]
         ]
+
+childTable :: ApplicationState -> Table ResourceName
+childTable (ApplicationState form' maybeMessage list') =
+  let listHasFocus = False
+   in surroundingBorder False $
+        rowBorders False $
+          table
+            [ [hLimitPercent 100 $ renderForm form'],
+              [hLimitPercent 100 $ hBorder],
+              [hLimitPercent 100 $ maybe emptyWidget str maybeMessage],
+              [hLimitPercent 100 $ vLimitPercent 100 $ renderList renderListFunc listHasFocus list']
+            ]
 
 renderListFunc :: Bool -> String -> Widget ResourceName
 renderListFunc _ = str
@@ -83,7 +94,7 @@ ui applicationState =
   joinBorders $
     withBorderStyle unicode $
       renderTable $
-        mainTable applicationState
+        parentTable applicationState
 
 eventHandler :: AppFunctions -> BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
 eventHandler appFunctions brickEvent = do
