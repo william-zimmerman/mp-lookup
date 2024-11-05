@@ -36,7 +36,7 @@ import Data.Vector (Vector, empty, fromList)
 import Graphics.Vty (Event (EvKey), Key (KEnter, KEsc, KFun), defAttr)
 import Lens.Micro.Platform (makeLenses, modifying, view)
 import Text.Printf (printf)
-import Types (AppFunctions (..), Constituency (..), ErrorMessage (..), Member (..), MpData (..), Postcode (..))
+import Types (AppFunctions (..), Constituency (..), ErrorMessage (..), Member (..), MpData (..), Postcode (..), SuccessMessage (MkSuccessMessage))
 
 data FormState = FormState
   { _fileName :: T.Text
@@ -120,7 +120,11 @@ eventHandler appFunctions brickEvent = do
       return ()
     VtyEvent (EvKey (KFun 1) []) -> do
       let mpLookupResults' = view UserInterface.mpLookupResults currentApplicationState
-      liftIO $ writeCsv appFunctions "resources/members.csv" mpLookupResults'
+      writeResults <- liftIO $ writeCsv appFunctions "resources/members.csv" mpLookupResults'
+      case writeResults of
+        (Right (MkSuccessMessage successMessage)) -> modifying UserInterface.userMessage (const $ Just successMessage)
+        (Left (MkErrorMessage errorMessage)) -> modifying UserInterface.userMessage (const $ Just errorMessage)
+      return ()
     _ -> zoom form (handleFormEvent brickEvent)
 
 app :: AppFunctions -> App ApplicationState () ResourceName

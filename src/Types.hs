@@ -1,4 +1,4 @@
-module Types (Postcode (..), MpData (..), Constituency (..), Member (..), ErrorMessage (..), AppFunctions (..)) where
+module Types (Postcode (..), MpData (..), Constituency (..), Member (..), ErrorMessage (..), AppFunctions (..), SuccessMessage(..)) where
 
 import Data.Csv (ToRecord (toRecord), record)
 import Data.String (IsString (fromString))
@@ -32,11 +32,16 @@ newtype ErrorMessage = MkErrorMessage
   }
   deriving (Show)
 
+newtype SuccessMessage = MkSuccessMessage
+  { unSuccessMessage :: String
+  }
+  deriving (Show)
+
 instance ToRecord ErrorMessage where
   toRecord (MkErrorMessage message) = record [fromString message]
 
 data AppFunctions = AppFunctions
   { readPostcodes :: FilePath -> IO (Either ErrorMessage [Postcode]),
     lookupMp :: Postcode -> IO (Either ErrorMessage MpData),
-    writeCsv :: FilePath -> [Either ErrorMessage MpData] -> IO ()
+    writeCsv :: FilePath -> [Either ErrorMessage MpData] -> IO (Either ErrorMessage SuccessMessage)
   }
