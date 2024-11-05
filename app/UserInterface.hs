@@ -33,7 +33,7 @@ import Brick.Widgets.Table (Table, renderTable, rowBorders, surroundingBorder, t
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Data.Text as T
 import Data.Vector (Vector, empty, fromList)
-import Graphics.Vty (Event (EvKey), Key (KEnter, KEsc), defAttr)
+import Graphics.Vty (Event (EvKey), Key (KEnter, KEsc, KFun), defAttr)
 import Lens.Micro.Platform (makeLenses, modifying, view)
 import Text.Printf (printf)
 import Types (AppFunctions (..), Constituency (..), ErrorMessage (..), Member (..), MpData (..), Postcode (..))
@@ -51,11 +51,12 @@ data ResourceName = FormFileName | FormNewField | ResultList
 data ApplicationState = ApplicationState
   { _form :: Form FormState () ResourceName,
     _userMessage :: Maybe String,
-    _list :: GenericList ResourceName Vector String
+    _list :: GenericList ResourceName Vector String,
+    _mpLookupResults :: [Either ErrorMessage MpData]
   }
 
 instance Show ApplicationState where
-  show (ApplicationState form' maybeMessage _) = "ApplicationState {form = " ++ show (formState form') ++ ", userMessage = " ++ show maybeMessage ++ "}"
+  show (ApplicationState form' maybeMessage _ _) = "ApplicationState {form = " ++ show (formState form') ++ ", userMessage = " ++ show maybeMessage ++ "}"
 
 makeLenses ''ApplicationState
 
@@ -71,11 +72,14 @@ parentTable applicationState =
     rowBorders False $
       table
         [ [hLimitPercent 100 $ vLimitPercent 98 $ borderWithLabel (str "MP Lookup v0.1") $ renderTable (childTable applicationState)],
-          [hLimitPercent 100 $ str " esc: exit"]
+          [hLimitPercent 100 $ str $ availableCommands applicationState]
         ]
 
+availableCommands :: ApplicationState -> String
+availableCommands _ = " esc: exit | f1: write to file"
+
 childTable :: ApplicationState -> Table ResourceName
-childTable (ApplicationState form' maybeMessage list') =
+childTable (ApplicationState form' maybeMessage list' _) =
   let listHasFocus = False
    in surroundingBorder False $
         rowBorders False $
@@ -106,13 +110,17 @@ eventHandler appFunctions brickEvent = do
       readResults <- liftIO $ readPostcodes appFunctions (T.unpack $ view fileName currentFormState)
       case readResults of
         (Right postCodes) -> do
-          mpLookupResults <- liftIO $ mapM (lookupMp appFunctions) postCodes
+          mpLookupResults' <- liftIO $ mapM (lookupMp appFunctions) postCodes
           modifying UserInterface.userMessage (const Nothing)
-          modifying UserInterface.list $ listReplace (fromList $ map toListItem mpLookupResults) Nothing
+          modifying UserInterface.list $ listReplace (fromList $ map toListItem mpLookupResults') Nothing
+          modifying UserInterface.mpLookupResults (const mpLookupResults')
         (Left (MkErrorMessage errorMessage)) -> do
           modifying UserInterface.userMessage (const $ Just errorMessage)
           modifying UserInterface.list listClear
       return ()
+    VtyEvent (EvKey (KFun 1) []) -> do
+      let mpLookupResults' = view UserInterface.mpLookupResults currentApplicationState
+      liftIO $ writeCsv appFunctions "resources/members.csv" mpLookupResults'
     _ -> zoom form (handleFormEvent brickEvent)
 
 app :: AppFunctions -> App ApplicationState () ResourceName
@@ -126,7 +134,7 @@ app appFunctions =
     }
 
 initialApplicationState :: ApplicationState
-initialApplicationState = ApplicationState (inputForm initialFormState) Nothing initialList
+initialApplicationState = ApplicationState (inputForm initialFormState) Nothing initialList []
   where
     initialFormState :: FormState
     initialFormState = FormState T.empty
