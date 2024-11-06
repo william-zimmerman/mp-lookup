@@ -116,15 +116,12 @@ eventHandler appFunctions brickEvent = do
           modifying UserInterface.mpLookupResults (const mpLookupResults')
         (Left (MkErrorMessage errorMessage)) -> do
           modifying UserInterface.userMessage (const $ Just errorMessage)
-          modifying UserInterface.list listClear
-      return ()
     VtyEvent (EvKey (KFun 1) []) -> do
       let mpLookupResults' = view UserInterface.mpLookupResults currentApplicationState
       writeResults <- liftIO $ writeCsv appFunctions "resources/members.csv" mpLookupResults'
       case writeResults of
         (Right (MkSuccessMessage successMessage)) -> modifying UserInterface.userMessage (const $ Just successMessage)
         (Left (MkErrorMessage errorMessage)) -> modifying UserInterface.userMessage (const $ Just errorMessage)
-      return ()
     _ -> zoom form (handleFormEvent brickEvent)
 
 app :: AppFunctions -> App ApplicationState () ResourceName
