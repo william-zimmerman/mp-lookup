@@ -22,3 +22,5 @@
 - [ ] User is shown menu of different options (e.g. "Search for MP by postcode")
 - [ ] User is given option to enter 1 or more postcodes manually or read them from a file
 - [ ] Error messages are shown with special formatting
+- [ ] Prompt user for file to write to
+- [ ] Allow user to scroll through list of MPs when there are more in list than can be displayed 
