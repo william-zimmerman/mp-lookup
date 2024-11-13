@@ -28,7 +28,7 @@ import Brick.Forms (Form (..), editTextField, handleFormEvent, newForm, renderFo
 import Brick.Widgets.Border (borderWithLabel, hBorder)
 import Brick.Widgets.Border.Style (unicode)
 import Brick.Widgets.Core (emptyWidget, hLimitPercent, vLimitPercent)
-import Brick.Widgets.List (GenericList, list, listClear, listReplace, renderList)
+import Brick.Widgets.List (GenericList, list, listReplace, renderList)
 import Brick.Widgets.Table (Table, renderTable, rowBorders, surroundingBorder, table)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Data.Text as T
@@ -103,19 +103,9 @@ ui applicationState =
 eventHandler :: AppFunctions -> BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
 eventHandler appFunctions brickEvent = do
   currentApplicationState <- get
-  let currentFormState = formState $ view form currentApplicationState
   case brickEvent of
     VtyEvent (EvKey KEsc []) -> halt
-    VtyEvent (EvKey KEnter []) -> do
-      readResults <- liftIO $ readPostcodes appFunctions (T.unpack $ view fileName currentFormState)
-      case readResults of
-        (Right postCodes) -> do
-          mpLookupResults' <- liftIO $ mapM (lookupMp appFunctions) postCodes
-          modifying UserInterface.userMessage (const Nothing)
-          modifying UserInterface.list $ listReplace (fromList $ map toListItem mpLookupResults') Nothing
-          modifying UserInterface.mpLookupResults (const mpLookupResults')
-        (Left (MkErrorMessage errorMessage)) -> do
-          modifying UserInterface.userMessage (const $ Just errorMessage)
+    VtyEvent (EvKey KEnter []) -> executeReadAndLookup appFunctions currentApplicationState
     VtyEvent (EvKey (KFun 1) []) -> do
       let mpLookupResults' = view UserInterface.mpLookupResults currentApplicationState
       writeResults <- liftIO $ writeCsv appFunctions "resources/members.csv" mpLookupResults'
@@ -123,6 +113,32 @@ eventHandler appFunctions brickEvent = do
         (Right (MkSuccessMessage successMessage)) -> modifying UserInterface.userMessage (const $ Just successMessage)
         (Left (MkErrorMessage errorMessage)) -> modifying UserInterface.userMessage (const $ Just errorMessage)
     _ -> zoom form (handleFormEvent brickEvent)
+
+executeReadAndLookup :: AppFunctions -> ApplicationState -> EventM ResourceName ApplicationState ()
+executeReadAndLookup functions currentApplicationState =
+  let currentFormState = formState $ view form currentApplicationState
+      postcodeFilePath = T.unpack $ view fileName currentFormState
+      readPostcodesFunc = readPostcodes functions
+      lookupMpFunc = lookupMp functions
+   in do
+        readResults <- liftIO $ readPostcodesFunc postcodeFilePath
+        either
+          updateUiWithReadError
+          ( \postcodes -> do
+              lookupResults <- liftIO $ mapM lookupMpFunc postcodes
+              updateUiWithLookupResults lookupResults
+          )
+          readResults
+
+updateUiWithReadError :: ErrorMessage -> EventM ResourceName ApplicationState ()
+updateUiWithReadError (MkErrorMessage errorMessage) =
+  modifying UserInterface.userMessage (const $ Just errorMessage)
+
+updateUiWithLookupResults :: [Either ErrorMessage MpData] -> EventM ResourceName ApplicationState ()
+updateUiWithLookupResults results = do
+  modifying UserInterface.userMessage (const Nothing)
+  modifying UserInterface.list $ listReplace (fromList $ map toListItem results) Nothing
+  modifying UserInterface.mpLookupResults (const results)
 
 app :: AppFunctions -> App ApplicationState () ResourceName
 app appFunctions =
