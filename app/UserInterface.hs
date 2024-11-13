@@ -93,8 +93,8 @@ childTable (ApplicationState form' maybeMessage list' _) =
 renderListFunc :: Bool -> String -> Widget ResourceName
 renderListFunc _ = str
 
-ui :: ApplicationState -> Widget ResourceName
-ui applicationState =
+baseUiLayer :: ApplicationState -> Widget ResourceName
+baseUiLayer applicationState =
   joinBorders $
     withBorderStyle unicode $
       renderTable $
@@ -102,16 +102,16 @@ ui applicationState =
 
 eventHandler :: AppFunctions -> BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
 eventHandler functions brickEvent = do
-  currentApplicationState <- get
+  applicationState <- get
   case brickEvent of
     VtyEvent (EvKey KEsc []) -> halt
-    VtyEvent (EvKey KEnter []) -> executeReadAndLookup functions currentApplicationState
-    VtyEvent (EvKey (KFun 1) []) -> executeWriteToFile functions currentApplicationState
+    VtyEvent (EvKey KEnter []) -> executeReadAndLookup functions applicationState
+    VtyEvent (EvKey (KFun 1) []) -> executeWriteToFile functions applicationState
     _ -> zoom form (handleFormEvent brickEvent)
 
 executeReadAndLookup :: AppFunctions -> ApplicationState -> EventM ResourceName ApplicationState ()
-executeReadAndLookup functions currentApplicationState =
-  let currentFormState = formState $ view form currentApplicationState
+executeReadAndLookup functions applicationState =
+  let currentFormState = formState $ view form applicationState
       postcodeFilePath = T.unpack $ view fileName currentFormState
       readPostcodesFunc = readPostcodes functions
       lookupMpFunc = lookupMp functions
@@ -140,8 +140,8 @@ updateUiWithLookupResults results = do
   modifying UserInterface.mpLookupResults (const results)
 
 executeWriteToFile :: AppFunctions -> ApplicationState -> EventM ResourceName ApplicationState ()
-executeWriteToFile functions currentApplicationState =
-  let lookupResults = view UserInterface.mpLookupResults currentApplicationState
+executeWriteToFile functions applicationState =
+  let lookupResults = view UserInterface.mpLookupResults applicationState
       writeFunc = writeCsv functions
    in do
         writeResults <- liftIO $ writeFunc "resources/members.csv" lookupResults
@@ -153,7 +153,7 @@ executeWriteToFile functions currentApplicationState =
 app :: AppFunctions -> App ApplicationState () ResourceName
 app appFunctions =
   App
-    { appDraw = \s -> [ui s],
+    { appDraw = \s -> [baseUiLayer s],
       appChooseCursor = showFirstCursor,
       appHandleEvent = eventHandler appFunctions,
       appStartEvent = return (),
