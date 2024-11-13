@@ -101,17 +101,12 @@ ui applicationState =
         parentTable applicationState
 
 eventHandler :: AppFunctions -> BrickEvent ResourceName () -> EventM ResourceName ApplicationState ()
-eventHandler appFunctions brickEvent = do
+eventHandler functions brickEvent = do
   currentApplicationState <- get
   case brickEvent of
     VtyEvent (EvKey KEsc []) -> halt
-    VtyEvent (EvKey KEnter []) -> executeReadAndLookup appFunctions currentApplicationState
-    VtyEvent (EvKey (KFun 1) []) -> do
-      let mpLookupResults' = view UserInterface.mpLookupResults currentApplicationState
-      writeResults <- liftIO $ writeCsv appFunctions "resources/members.csv" mpLookupResults'
-      case writeResults of
-        (Right (MkSuccessMessage successMessage)) -> modifying UserInterface.userMessage (const $ Just successMessage)
-        (Left (MkErrorMessage errorMessage)) -> modifying UserInterface.userMessage (const $ Just errorMessage)
+    VtyEvent (EvKey KEnter []) -> executeReadAndLookup functions currentApplicationState
+    VtyEvent (EvKey (KFun 1) []) -> executeWriteToFile functions currentApplicationState
     _ -> zoom form (handleFormEvent brickEvent)
 
 executeReadAndLookup :: AppFunctions -> ApplicationState -> EventM ResourceName ApplicationState ()
@@ -123,22 +118,37 @@ executeReadAndLookup functions currentApplicationState =
    in do
         readResults <- liftIO $ readPostcodesFunc postcodeFilePath
         either
-          updateUiWithReadError
+          updateUiWithErrorMessage
           ( \postcodes -> do
               lookupResults <- liftIO $ mapM lookupMpFunc postcodes
               updateUiWithLookupResults lookupResults
           )
           readResults
 
-updateUiWithReadError :: ErrorMessage -> EventM ResourceName ApplicationState ()
-updateUiWithReadError (MkErrorMessage errorMessage) =
+updateUiWithErrorMessage :: ErrorMessage -> EventM ResourceName ApplicationState ()
+updateUiWithErrorMessage (MkErrorMessage errorMessage) =
   modifying UserInterface.userMessage (const $ Just errorMessage)
+
+updateUiWithSuccessMessage :: SuccessMessage -> EventM ResourceName ApplicationState ()
+updateUiWithSuccessMessage (MkSuccessMessage message) =
+  modifying UserInterface.userMessage (const $ Just message)
 
 updateUiWithLookupResults :: [Either ErrorMessage MpData] -> EventM ResourceName ApplicationState ()
 updateUiWithLookupResults results = do
   modifying UserInterface.userMessage (const Nothing)
   modifying UserInterface.list $ listReplace (fromList $ map toListItem results) Nothing
   modifying UserInterface.mpLookupResults (const results)
+
+executeWriteToFile :: AppFunctions -> ApplicationState -> EventM ResourceName ApplicationState ()
+executeWriteToFile functions currentApplicationState =
+  let lookupResults = view UserInterface.mpLookupResults currentApplicationState
+      writeFunc = writeCsv functions
+   in do
+        writeResults <- liftIO $ writeFunc "resources/members.csv" lookupResults
+        either
+          updateUiWithErrorMessage
+          updateUiWithSuccessMessage
+          writeResults
 
 app :: AppFunctions -> App ApplicationState () ResourceName
 app appFunctions =
