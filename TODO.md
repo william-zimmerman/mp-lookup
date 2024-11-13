@@ -9,6 +9,7 @@
 - [ ] Use lenses for API response value retrieval 
 - [ ] Move all CSV logic (including ToRecord instances) to separate module
 - [ ] Create type/monad representing an effect that can can result in type a (success) or ErrorMessage (error case); essentially abstract type (Either ErrorMessag a)
+- [ ] Can IO and Either be combined easily?
 
 ## UI TODO
 - [x] User can enter an input file to be read for postcodes
