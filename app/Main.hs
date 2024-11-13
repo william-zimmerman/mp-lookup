@@ -15,6 +15,11 @@ import Types
 import UserInterface (app, initialApplicationState)
 import Web.MembersApi (performMpLookup)
 
+main :: IO ()
+main = do
+  finalApplicationState <- defaultMain (app appFunctions) initialApplicationState
+  putStrLn $ "Final application state: " ++ show finalApplicationState
+
 appFunctions :: AppFunctions
 appFunctions =
   AppFunctions
@@ -31,11 +36,6 @@ appFunctions =
           Data.ByteString.Lazy.writeFile filePath csvContents
           return $ Right $ MkSuccessMessage (printf "Wrote to %s" filePath)
     }
-
-main :: IO ()
-main = do
-  finalApplicationState <- defaultMain (app appFunctions) initialApplicationState
-  putStrLn $ "Final application state: " ++ show finalApplicationState
 
 createCsvRow :: Either ErrorMessage MpData -> ByteString
 createCsvRow (Left errorMessage) = CSV.encode [errorMessage]
