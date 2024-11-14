@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module UserInterface (app, initialApplicationState) where
@@ -34,22 +35,18 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Data.Text as T
 import Data.Vector (Vector, empty, fromList)
 import Graphics.Vty (Event (EvKey), Key (KEnter, KEsc, KFun), defAttr)
-import Lens.Micro.Platform (makeLenses, modifying, view)
+import Lens.Micro.Platform (Lens', lens, makeLenses, modifying, view)
 import Text.Printf (printf)
 import Types (AppFunctions (..), Constituency (..), ErrorMessage (..), Member (..), MpData (..), Postcode (..), SuccessMessage (MkSuccessMessage))
-
-data FormState = FormState
-  { _fileName :: T.Text
-  }
-  deriving (Show)
-
-makeLenses ''FormState
 
 data ResourceName = FormFileName | FormNewField | ResultList
   deriving (Eq, Ord, Show)
 
+stringTextLens :: Lens' String T.Text
+stringTextLens = lens T.pack (\_ b -> T.unpack b)
+
 data ApplicationState = ApplicationState
-  { _form :: Form FormState () ResourceName,
+  { _form :: Form String () ResourceName,
     _userMessage :: Maybe String,
     _list :: GenericList ResourceName Vector String,
     _mpLookupResults :: [Either ErrorMessage MpData]
@@ -60,10 +57,10 @@ instance Show ApplicationState where
 
 makeLenses ''ApplicationState
 
-inputForm :: FormState -> Form FormState () ResourceName
+inputForm :: String -> Form String () ResourceName
 inputForm =
   newForm
-    [ (str "File name: " <+>) @@= editTextField fileName FormFileName (Just 1)
+    [ (str "File name: " <+>) @@= editTextField stringTextLens FormFileName (Just 1)
     ]
 
 parentTable :: ApplicationState -> Table ResourceName
@@ -111,8 +108,7 @@ eventHandler functions brickEvent = do
 
 executeReadAndLookup :: AppFunctions -> ApplicationState -> EventM ResourceName ApplicationState ()
 executeReadAndLookup functions applicationState =
-  let currentFormState = formState $ view form applicationState
-      postcodeFilePath = T.unpack $ view fileName currentFormState
+  let postcodeFilePath = formState $ view form applicationState
       readPostcodesFunc = readPostcodes functions
       lookupMpFunc = lookupMp functions
    in do
@@ -163,8 +159,8 @@ app appFunctions =
 initialApplicationState :: ApplicationState
 initialApplicationState = ApplicationState (inputForm initialFormState) Nothing initialList []
   where
-    initialFormState :: FormState
-    initialFormState = FormState T.empty
+    initialFormState :: String
+    initialFormState = []
     initialList :: GenericList ResourceName Vector String
     initialList = Brick.Widgets.List.list ResultList Data.Vector.empty 1
 
