@@ -39,28 +39,28 @@ import Lens.Micro.Platform (Lens', lens, makeLenses, modifying, view)
 import Text.Printf (printf)
 import Types (AppFunctions (..), Constituency (..), ErrorMessage (..), Member (..), MpData (..), Postcode (..), SuccessMessage (MkSuccessMessage))
 
-data ResourceName = FormFileName | FormNewField | ResultList
+data ResourceName = InputFileForm | FormNewField | ResultList
   deriving (Eq, Ord, Show)
 
 stringTextLens :: Lens' String T.Text
 stringTextLens = lens T.pack (\_ b -> T.unpack b)
 
 data ApplicationState = ApplicationState
-  { _form :: Form String () ResourceName,
+  { _inputFileForm :: Form String () ResourceName,
     _userMessage :: Maybe String,
     _list :: GenericList ResourceName Vector String,
     _mpLookupResults :: [Either ErrorMessage MpData]
   }
 
 instance Show ApplicationState where
-  show (ApplicationState form' maybeMessage _ _) = "ApplicationState {form = " ++ show (formState form') ++ ", userMessage = " ++ show maybeMessage ++ "}"
+  show (ApplicationState inputFileForm' maybeMessage _ _) = "ApplicationState {inputFileForm = " ++ show (formState inputFileForm') ++ ", userMessage = " ++ show maybeMessage ++ "}"
 
 makeLenses ''ApplicationState
 
-inputForm :: String -> Form String () ResourceName
-inputForm =
+createInputFileForm :: String -> Form String () ResourceName
+createInputFileForm =
   newForm
-    [ (str "File name: " <+>) @@= editTextField stringTextLens FormFileName (Just 1)
+    [ (str "Input file name: " <+>) @@= editTextField stringTextLens InputFileForm (Just 1)
     ]
 
 parentTable :: ApplicationState -> Table ResourceName
@@ -76,12 +76,12 @@ availableCommands :: ApplicationState -> String
 availableCommands _ = " esc: exit | f1: write to file"
 
 childTable :: ApplicationState -> Table ResourceName
-childTable (ApplicationState form' maybeMessage list' _) =
+childTable (ApplicationState inputFileForm' maybeMessage list' _) =
   let listHasFocus = False
    in surroundingBorder False $
         rowBorders False $
           table
-            [ [hLimitPercent 100 $ renderForm form'],
+            [ [hLimitPercent 100 $ renderForm inputFileForm'],
               [hLimitPercent 100 $ hBorder],
               [hLimitPercent 100 $ maybe emptyWidget str maybeMessage],
               [hLimitPercent 100 $ vLimitPercent 100 $ renderList renderListFunc listHasFocus list']
@@ -104,11 +104,11 @@ eventHandler functions brickEvent = do
     VtyEvent (EvKey KEsc []) -> halt
     VtyEvent (EvKey KEnter []) -> executeReadAndLookup functions applicationState
     VtyEvent (EvKey (KFun 1) []) -> executeWriteToFile functions applicationState
-    _ -> zoom form (handleFormEvent brickEvent)
+    _ -> zoom inputFileForm (handleFormEvent brickEvent)
 
 executeReadAndLookup :: AppFunctions -> ApplicationState -> EventM ResourceName ApplicationState ()
 executeReadAndLookup functions applicationState =
-  let postcodeFilePath = formState $ view form applicationState
+  let postcodeFilePath = formState $ view inputFileForm applicationState
       readPostcodesFunc = readPostcodes functions
       lookupMpFunc = lookupMp functions
    in do
@@ -157,7 +157,7 @@ app appFunctions =
     }
 
 initialApplicationState :: ApplicationState
-initialApplicationState = ApplicationState (inputForm initialFormState) Nothing initialList []
+initialApplicationState = ApplicationState (createInputFileForm initialFormState) Nothing initialList []
   where
     initialFormState :: String
     initialFormState = []
